@@ -11,6 +11,7 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 from astrbot.core.utils.session_waiter import SessionController, session_waiter
 
 from ..utils import format_time, get_nickname
+import re
 
 if TYPE_CHECKING:
     from ..main import QQAdminPlugin
@@ -41,6 +42,36 @@ class MemberHandle:
         url = await self.plugin.text_to_image(info_str)
         await event.send(event.image_result(url))
 
+    async def check_member_card(self, event: AiocqhttpMessageEvent):
+        # 检查群昵称是否符合要求
+        group_id = event.get_group_id()
+        pattern = r'^.+(朱|紫).+$'
+
+        try:
+            members_data = await event.bot.get_group_member_list(group_id=int(group_id))
+        except Exception as e:
+            await event.send(event.plain_result(f"获取群成员信息失败：{e}"))
+            return
+
+        clear_ids: list[int] = []
+        notify_members: list[dict] = []
+        info_lines: list[str] = []
+
+        for member in members_data:  # type: ignore
+            last_sent = member.get("last_sent_time", 0)
+            level = int(member.get("level", 0))
+            user_id = member.get("user_id", "")
+            nickname = member.get("nickname", "（无昵称）")
+            card = member.get("card", "")
+            if not re.fullmatch(pattern, card):
+                notify_members.append(member)
+                clear_ids.append(user_id)
+
+        if not notify_members:
+            await event.send(event.plain_result("QQ群 {group_id} 所有群友昵称符合要求"))
+            return
+
+        await event.send(event.chain_result([At(qq=cid) for cid in clear_ids]))
 
     async def clear_group_member(
         self,

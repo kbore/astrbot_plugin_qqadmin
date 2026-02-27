@@ -375,6 +375,11 @@ class QQAdminPlugin(Star):
     async def get_group_member_list(self, event: AiocqhttpMessageEvent):
         await self.member.get_group_member_list(event)
 
+    @filter.command("检查群昵称", desc="检查群友群昵称格式")
+    @perm_required(PermLevel.ADMIN)
+    async def get_group_member_list(self, event: AiocqhttpMessageEvent):
+        await self.member.check_member_card(event)
+
     @filter.command("清理群友")
     @perm_required(PermLevel.MEMBER)
     async def clear_group_member(
